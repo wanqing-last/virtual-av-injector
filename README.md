@@ -3,31 +3,40 @@
 把本地视频文件推成**虚拟摄像头**、把本地音频（或视频的音轨）推成**虚拟麦克风**，
 让腾讯会议 / 钉钉 / Zoom / OBS / 直播软件等采集到的画面和声音就是你指定的素材。
 
+Windows 10/11 x64 · Python 3.10+
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-35d6c8.svg)](LICENSE)
+[![Platform](https://img.shields.io/badge/platform-Windows%2010%2F11-6f8cff.svg)](#)
+[![Python](https://img.shields.io/badge/python-3.10%2B-3776ab.svg)](requirements.txt)
+
 ![界面](docs/ui.png)
 
 ## 快速开始
 
-### 方式一：绿色单文件 exe（推荐，给别人用）
+### 方式一：单文件 exe（免 Python，推荐）
 
-```
-双击 dist\虚拟音视频注入器.exe
-```
+到 [Releases](../../releases) 下载 `虚拟音视频注入器.exe`，双击即可。
+98MB 单文件，拷到任何 64 位 Win10/11 都能跑；首次启动会自解压到临时目录，约需 5~10 秒。
 
-**免 Python、免装依赖**，98MB 单文件，拷到任何 64 位 Win10/11 都能跑。
-首次启动会自解压到临时目录，约需 5~10 秒，之后窗口自动弹出。
+> 也可以自己打包，见[重新打包 exe](#重新打包-exe)。
 
 ### 方式二：源码运行
 
-```
-双击 启动.bat
+```bash
+git clone https://github.com/wanqing-last/virtual-av-injector.git
+cd virtual-av-injector
+pip install -r requirements.txt
+python main.py
 ```
 
-首次运行会自动安装依赖（numpy / opencv / pyvirtualcam / sounddevice / av / pygrabber）。
+Windows 下也可以直接双击 `启动.bat`（会自动检查并安装依赖）。
 
-两种方式都会弹出独立窗口（Chrome/Edge 的 App 模式，也可直接访问控制台里打印的
+两种方式都会弹出独立窗口（Chrome/Edge 的 App 模式，也可直接访问终端里打印的
 `http://127.0.0.1:端口/`）。
 
-1. 左侧「视频源」→ 浏览选择视频（或点 **载入演示素材** 先试效果）
+1. 左侧「视频源」→ 浏览选择视频
+   （仓库不含演示视频，可先跑 `python tools/make_demo.py` 生成 `assets/demo.mp4`，
+   界面里就能点 **载入演示素材**）
 2. 左侧「音频源」→ 跟随视频音轨 / 单独音频文件 / 静音
 3. 点右上角 **开始注入**，然后在会议/直播软件里选设备：
    - 摄像头 → `OBS Virtual Camera`
@@ -63,8 +72,8 @@
 
 ## 自测
 
-```
-先双击启动（或 python main.py --port 8791 --no-browser），另开一个终端：
+```bash
+# 先启动（或 python main.py --port 8791 --no-browser），另开一个终端：
 python tools/e2e_test.py 8791
 ```
 
@@ -72,15 +81,15 @@ python tools/e2e_test.py 8791
 
 ## 重新打包 exe
 
-```
-python -m pip install pyinstaller
+```bash
+pip install pyinstaller
 python -m PyInstaller build.spec --noconfirm --clean
 ```
 
-产物在 `dist\虚拟音视频注入器.exe`。spec 里已处理好三个坑：sounddevice 的 PortAudio DLL
-（在 `_sounddevice_data/`，不是包所以 collect 拿不到）、pyvirtualcam 的 `.pyd` 后端、
-av 的 ffmpeg 动态库。想换图标就改 `EXE(..., icon="xxx.ico")`，想减体积可加 `upx=True`
-（需自备 upx.exe，98MB → 约 70MB）。
+产物在 `dist/虚拟音视频注入器.exe`。spec 里已处理好四个坑：spec 脚本没有 `__file__`
+（用 `SPECPATH`）、sounddevice 的 PortAudio DLL（在 `_sounddevice_data/`，它不是包所以
+`collect_data_files` 拿不到，必须手动加）、pyvirtualcam 的 `.pyd` 后端、av 的 ffmpeg 动态库。
+想换图标就改 `EXE(..., icon="xxx.ico")`，想减体积可加 `upx=True`（需自备 upx.exe，98MB → 约 70MB）。
 
 ## HTTP 接口（本机）
 
@@ -89,10 +98,10 @@ av 的 ffmpeg 动态库。想换图标就改 `EXE(..., icon="xxx.ico")`，想减
 | `GET /api/state` | 全量状态（设备/进度/日志增量） |
 | `POST /api/load_video` `{path}` 或 `{demo:true}` | 加载视频 |
 | `POST /api/audio_source` `{mode, path}` | video / file / none |
-| `POST /api/start` `/api/stop` `/api/pause` | 注入开关与暂停 |
+| `POST /api/start` `/api/stop` `/api/pause` `/api/quit` | 注入开关、暂停、退出程序 |
 | `POST /api/seek` `{t}` / `/api/loop` `{on}` / `/api/volume` `{v}` | 播放控制 |
 | `POST /api/output` `{w,h,fps}` / `/api/audio_device` `{index}` | 输出参数 |
-| `POST /api/scan` / `/api/selftest` | 重新扫描 / 设备自检 |
+| `POST /api/scan` / `/api/selftest` / `/api/clear_cache` | 重新扫描 / 设备自检 / 清缓存 |
 | `GET /stream.mjpg` `GET /preview.jpg` | 预览流 / 静态帧 |
 
 ## 常见问题
@@ -108,3 +117,14 @@ ACTIVE）。**重启电脑**即可；仍未恢复就重装一次 VB-CABLE。
 **Q：声音从扬声器放出去了？**
 输出端点选错了——必须选虚拟声卡的端点（界面里带 ★ 的），选成物理扬声器就会外放，
 程序会以黄色日志提醒。
+
+## 已知限制
+
+- 仅支持 Windows（依赖 DirectShow 与 OBS 虚拟摄像头滤镜）。
+- 长视频首次加载要做一次音轨转 PCM，耗时与片长相关（之后走缓存，秒开）。
+- 输出分辨率/帧率在注入过程中不可改，需先停止注入。
+- 虚拟摄像头 / 虚拟麦克风是系统级驱动，本程序只能「使用」不能「安装」。
+
+## License
+
+[MIT](LICENSE)

@@ -1,0 +1,62 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: 安装依赖
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: 语法检查
+        run: python -m compileall -q injector main.py tools
+
+      - name: 导入检查
+        run: |
+          python -c "import injector.engine, injector.server, injector.devices, injector.media, injector.audio_track"
+          python -c "from injector.paths import resource_root; print(resource_root())"
+
+      - name: Web 资源完整性
+        run: |
+          python -c "import os; p='injector/web/index.html'; assert os.path.getsize(p) > 10000; print('index.html ok')"
+
+      - name: 生成演示素材
+        run: python tools/make_demo.py
+
+      - name: 起服务并验证接口
+        run: |
+          Start-Process python -ArgumentList "main.py","--port","8791","--no-browser"
+          $ok = $false
+          for ($i = 0; $i -lt 30; $i++) {
+            Start-Sleep -Seconds 1
+            try {
+              $r = Invoke-RestMethod "http://127.0.0.1:8791/api/state" -TimeoutSec 3
+              $ok = $true
+              break
+            } catch { }
+          }
+          if (-not $ok) { throw "服务未在 30 秒内就绪" }
+          Write-Host "state=$($r.state) camera_ok=$($r.camera.ok)"
+          $page = Invoke-WebRequest "http://127.0.0.1:8791/" -TimeoutSec 5
+          if ($page.StatusCode -ne 200) { throw "首页异常" }
+          Invoke-RestMethod "http://127.0.0.1:8791/api/load_video" -Method Post -ContentType "application/json" -Body '{"demo":true}' | Out-Null
+          Invoke-RestMethod "http://127.0.0.1:8791/api/quit" -Method Post | Out-Null
+
+      - name: 打包 exe（验证 spec 可用）
+        run: |
+          pip install pyinstaller
+          python -m PyInstaller build.spec --noconfirm --clean
+          python -c "import os; s=os.path.getsize('dist/虚拟音视频注入器.exe'); print(f'exe {s/1048576:.1f} MB'); assert s > 50*1048576"
