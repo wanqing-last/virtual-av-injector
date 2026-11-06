@@ -35,11 +35,25 @@ class LogBus:
 LOGS = LogBus()
 
 
+def _ensure_utf8_stdout():
+    """某些环境（CI / 英文系统）stdout 是 cp1252，中文 print 会抛 UnicodeEncodeError。"""
+    if sys.stdout is None:
+        return
+    try:
+        if (sys.stdout.encoding or "").lower() not in ("utf-8", "utf8"):
+            sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
+
+
+_ensure_utf8_stdout()
+
+
 def log(msg: str, level: str = "info"):
     LOGS.log(msg, level)
     # 打包成无控制台 exe 后 sys.stdout 为 None，直接 print 会抛异常
     if sys.stdout is not None:
         try:
             print(f"[{level}] {msg}", flush=True)
-        except Exception:
+        except (UnicodeEncodeError, OSError, ValueError):
             pass

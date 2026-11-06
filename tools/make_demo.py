@@ -72,7 +72,6 @@ def main():
     os.makedirs(os.path.dirname(OUT), exist_ok=True)
     if os.path.exists(OUT):
         os.unlink(OUT)
-
     container = av.open(OUT, mode="w")
     vs = container.add_stream("libx264", rate=FPS)
     vs.width, vs.height = W, H
@@ -114,4 +113,9 @@ def main():
 
 
 if __name__ == "__main__":
+    # CI 里 runner 的 stdout 可能是 cp1252，中文会炸；统一改成 UTF-8 并容错
+    try:
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
     sys.exit(main())

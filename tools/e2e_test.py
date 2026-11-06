@@ -11,6 +11,11 @@ import urllib.request
 import cv2
 import numpy as np
 
+try:
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+except Exception:
+    pass
+
 PORT = int(sys.argv[1]) if len(sys.argv) > 1 else 8791
 BASE = f"http://127.0.0.1:{PORT}"
 

@@ -9,6 +9,11 @@ on:
 jobs:
   check:
     runs-on: windows-latest
+    timeout-minutes: 30
+    env:
+      # 中文输出 + runner 默认 cp1252 会炸，全局强制 UTF-8
+      PYTHONUTF8: "1"
+      PYTHONIOENCODING: "utf-8"
     steps:
       - uses: actions/checkout@v4
 

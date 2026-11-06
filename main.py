@@ -18,6 +18,13 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 if HERE not in sys.path:
     sys.path.insert(0, HERE)
 
+# 英文系统 / CI 环境 stdout 可能是 cp1252，中文输出会抛 UnicodeEncodeError
+try:
+    if sys.stdout is not None and (sys.stdout.encoding or "").lower() not in ("utf-8", "utf8"):
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+except Exception:
+    pass
+
 BROWSERS = [
     (r"C:\Program Files\Google\Chrome\Application\chrome.exe", "chrome"),
     (r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe", "chrome"),
