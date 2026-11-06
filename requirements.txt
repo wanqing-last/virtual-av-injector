@@ -1,0 +1,6 @@
+numpy>=1.24
+opencv-python>=4.8
+pyvirtualcam>=0.11
+sounddevice>=0.4.6
+av>=11.0
+pygrabber>=0.2
